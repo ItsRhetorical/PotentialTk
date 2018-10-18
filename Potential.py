@@ -5,12 +5,65 @@ class PotentialSim:
         self.gridSizeY = _grid_size_y
         self.StepsPerIteration = _steps_per_iteration
         self._build_grid()
+        self.set_initial_neighbors()
+        self.create_initial_edge()
 
     class Tile:
-        def __init__(self, location, item, field):
+        def __init__(self, location, item, field, canvas_id=None):
             self.location = location
             self.item = item
             self.field = field
+            self.neighbors = []
+            self.canvas_id = canvas_id
+
+        def __repr__(self):
+            return 'Location: ' + str(self.location) + '\n' + 'Item: ' + str(self.item) + '\n' \
+                   + 'Field: ' + str(self.field) + '\n' + 'Canvas ID: ' + str(self.canvas_id)
+
+        def calc_field_strength(self):
+            if self.item == 'source':
+                self.field = 255
+            elif self.item == 'wall':
+                pass
+            elif self.item == 'sink':
+                self.field = 0
+            else:
+                self.field = sum(tile.field for tile in self.neighbors)/float(len(self.neighbors))
+
+    def set_initial_neighbors(self):
+        for location, tile in self.Grid.items():
+            for neighbor in self.find_neighbor_tiles(tile):
+                if neighbor:
+                    tile.neighbors.append(neighbor)
+
+    def find_neighbor_tiles(self, tile):
+        neighbor_list = []
+        try:
+            neighbor_list.append(self.Grid[tile.location[0] - 1, tile.location[1]])
+        except KeyError:
+            pass
+        try:
+            neighbor_list.append(self.Grid[tile.location[0], tile.location[1] + 1])
+        except KeyError:
+            pass
+        try:
+            neighbor_list.append(self.Grid[tile.location[0] + 1, tile.location[1]])
+        except KeyError:
+            pass
+        try:
+            neighbor_list.append(self.Grid[tile.location[0], tile.location[1] - 1])
+        except KeyError:
+            pass
+        return neighbor_list
+
+    def remove_connections(self, cell_position):
+        for tile in self.Grid[cell_position].neighbors:
+            try:
+                tile.neighbors.remove(self.Grid[cell_position])
+            except ValueError:
+                print('clicked: ' + str(cell_position) + ' failed to remove connection from: ' + str(tile.location))
+
+        self.Grid[cell_position].neighbors.clear()
 
     def _build_grid(self):
         for x in range(self.gridSizeX):
@@ -18,141 +71,15 @@ class PotentialSim:
                 tile = self.Tile((x, y), "", 0)
                 self.Grid[x, y] = tile
 
-    def _average_neighbors(self, _x, _y):
-        if _x == 0:
-            left = 0
-        else:
-            left = self.Grid[_x - 1, _y].field
-
-        if _y == 0:
-            down = 0
-        else:
-            down = self.Grid[_x, _y - 1].field
-
-        if _x == self.gridSizeX - 1:
-            right = 0
-        else:
-            right = self.Grid[_x + 1, _y].field
-
-        if _y == self.gridSizeY - 1:
-            up = 0
-        else:
-            up = self.Grid[_x, _y + 1].field
-        return (left + right + up + down)/4.0
-
     def do_simulation(self):
         for i in range(self.StepsPerIteration):
-            for x in range(self.gridSizeX):
-                for y in range(self.gridSizeY):
-                    if self.Grid[x, y].item == "source":
-                        self.Grid[x, y].field = 255
-                    self.Grid[x, y].field = self._average_neighbors(x, y)
-                    if self.Grid[x, y].item == "source":
-                        self.Grid[x, y].field = 255
+            for location, tile in self.Grid.items():
+                tile.calc_field_strength()
 
-
-
-# Grid = {}
-# cursor = [0, 0]
-# lastKey = ""
-# gridSizeX = 20
-# gridSizeY = 20
-# StepsPerIteration = 5
-# TimePerStep = .3
-# simulate = True
-
-
-#
-# def buildGrid():
-#     for x in range(gridSizeX):
-#         for y in range(gridSizeY):
-#             tile = Tile((x, y), "", 0)
-#             Grid[x, y] = tile
-
-
-#
-#
-# buildGrid()
-# while True:
-#     time.sleep(TimePerStep)
-#     if kbhit():
-#         key = ord(getch())
-#         if key == 120:  # x
-#             print("Exit")
-#             break
-#         elif key == 32:  # space
-#             print("Pause")
-#             simulate = not simulate
-#         elif key == 113:  # q
-#             print("spawn")
-#             Grid[cursor[0], cursor[1]].item = "source"
-#             Grid[cursor[0], cursor[1]].field = 9
-#             simulate = True
-#         elif key == 97:  # a
-#             print("left")
-#             cursor[0] -= 1
-#             simulate = False
-#             drawScreen(Grid)
-#         elif key == 100:  # d
-#             print("right")
-#             cursor[0] += 1
-#             print(cursor)
-#             simulate = False
-#             drawScreen(Grid)
-#         elif key == 119:  # w
-#             print("up")
-#             cursor[1] -= 1
-#             simulate = False
-#             drawScreen(Grid)
-#         elif key == 115:  # s
-#             print("down")
-#             cursor[1] += 1
-#             simulate = False
-#             drawScreen(Grid)
-#         new_cursor = [0 if i < 0 else i for i in cursor]  # change all negatives to 0
-#         cursor = new_cursor
-#     if simulate:
-#         simulationIterations(StepsPerIteration)
-#         drawScreen(Grid)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def create_initial_edge(self):
+        for location, tile in self.Grid.items():
+            if location[0] == 0 or location[0] == self.gridSizeX - 1 \
+                    or location[1] == 0 or location[1] == self.gridSizeY - 1:
+                tile.item = 'sink'
 
 
