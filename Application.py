@@ -1,5 +1,7 @@
 from tkinter import *
+import tkinter.ttk as ttk
 import Potential
+
 
 class Application(object):
     def __init__(self, master):
@@ -9,12 +11,23 @@ class Application(object):
         self.cell_height, self.cell_width = 10, 10
         self.num_x_cells, self.num_y_cells = 50, 50
         self.total_x_size, self.total_y_size = self.cell_width * self.num_x_cells, self.cell_height * self.num_y_cells
-        self.myCanvas = self.build_canvas()
-        self.mySimulation = Potential.PotentialSim(self.num_x_cells, self.num_y_cells, self.steps_per_iteration)
-        self.build_visual_grid('red')
+        self.left_click_item = 'source'
 
+        self.myCanvas = None
+        self.button1 = None
+        self.button2 = None
+        self.button3 = None
+        self.button4 = None
+        self.button5 = None
+
+        self.build_widgets()
+        self.widget_grid_assignment()
+
+        self.mySimulation = Potential.PotentialSim(self.num_x_cells, self.num_y_cells, self.steps_per_iteration)
+
+        self.build_visual_grid('red')
         self.mySimulation.Grid[5, 5].item = 'source'
-        self.myCanvas.pack()
+
         self.master.after(0, self.animate)
 
     def animate(self):
@@ -22,9 +35,13 @@ class Application(object):
         self.update_visual_grid()
         self.master.after(self.animation_speed, self.animate)
 
+    def set_left_click(self, item):
+        self.left_click_item = item
+        # print(item)
+
     def left_click_callback(self, event):
         cell_position = self.find_cell_from_position(event.x, event.y)
-        self.mySimulation.Grid[cell_position].item = "source"
+        self.mySimulation.Grid[cell_position].item = self.left_click_item
 
     def middle_click_callback(self, event):
         cell_position = self.find_cell_from_position(event.x, event.y)
@@ -35,6 +52,27 @@ class Application(object):
         self.mySimulation.Grid[cell_position].item = "wall"
         self.mySimulation.remove_connections(cell_position)
 
+    def build_widgets(self):
+        self.myCanvas = self.build_canvas()
+        self.button1 = ttk.Button(self.master, text="Source",
+                                  command=(lambda item="source": self.set_left_click(item)))
+        self.button2 = ttk.Button(self.master, text="Wall",
+                                  command=(lambda item="wall": self.set_left_click(item)))
+        self.button3 = ttk.Button(self.master, text="Sink",
+                                  command=(lambda item="sink": self.set_left_click(item)))
+        self.button4 = ttk.Button(self.master, text="Pipe",
+                                  command=(lambda item="pipe": self.set_left_click(item)))
+        self.button5 = ttk.Button(self.master, text="test",
+                                  command=(lambda item="sink": self.set_left_click(item)))
+
+    def widget_grid_assignment(self):
+        self.myCanvas.grid(row=1, column=1, columnspan=5)
+        self.button1.grid(row=2, column=1, pady=10)
+        self.button2.grid(row=2, column=2, pady=10)
+        self.button3.grid(row=2, column=3, pady=10)
+        self.button4.grid(row=2, column=4, pady=10)
+        self.button5.grid(row=2, column=5, pady=10)
+
     def build_canvas(self):
         canvas = Canvas(self.master, width=self.total_x_size, height=self.total_y_size)
         canvas.bind("<Button-1>", self.left_click_callback)
@@ -43,7 +81,6 @@ class Application(object):
         canvas.bind("<B1-Motion>", self.left_click_callback)
         canvas.bind("<B2-Motion>", self.middle_click_callback)
         canvas.bind("<B3-Motion>", self.right_click_callback)
-        canvas.pack()
         return canvas
 
     def build_visual_grid(self, default_color):
@@ -59,6 +96,8 @@ class Application(object):
                 self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(255, 255, 255))
             elif tile.item == 'source':
                 self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(255, 255, 0))
+            elif tile.item == 'pipe':
+                self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(0, 0, 255))
             else:
                 self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(tile.field, 0, 0))
 
@@ -81,7 +120,8 @@ class Application(object):
         return color
 
 
-root = Tk()
-root.title("Potential Mapping")
-app = Application(root)
-root.mainloop()
+if __name__ == "__main__":
+    root = Tk()
+    root.title("Potential Mapping")
+    app = Application(root)
+    root.mainloop()
