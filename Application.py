@@ -8,9 +8,11 @@ class Application(object):
         self.master = master
         self.steps_per_iteration = 1
         self.animation_speed = 10
-        self.cell_height, self.cell_width = 10, 10
-        self.num_x_cells, self.num_y_cells = 50, 50
+        self.cell_height, self.cell_width = 20, 20
+        self.num_x_cells, self.num_y_cells = 31, 31
         self.total_x_size, self.total_y_size = self.cell_width * self.num_x_cells, self.cell_height * self.num_y_cells
+        self.default_conductivity = 20.0
+        self.pipe_conductivity = 2.0
         self.left_click_item = 'source'
 
         self.myCanvas = None
@@ -23,10 +25,11 @@ class Application(object):
         self.build_widgets()
         self.widget_grid_assignment()
 
-        self.mySimulation = Potential.PotentialSim(self.num_x_cells, self.num_y_cells, self.steps_per_iteration)
+        self.mySimulation = Potential.PotentialSim(
+            self.num_x_cells, self.num_y_cells, self.steps_per_iteration, self.pipe_conductivity, self.default_conductivity)
 
         self.build_visual_grid('red')
-        self.mySimulation.Grid[5, 5].item = 'source'
+        self.mySimulation.Grid[15, 15].item = 'source'
 
         self.master.after(0, self.animate)
 
@@ -39,9 +42,22 @@ class Application(object):
         self.left_click_item = item
         # print(item)
 
+    def test(self, event):
+        cell_position = self.find_cell_from_position(event.x, event.y)
+        print(self.mySimulation.Grid[cell_position])
+
     def left_click_callback(self, event):
         cell_position = self.find_cell_from_position(event.x, event.y)
+        if self.left_click_item == "test":
+            self.test(event)
+            return
+
         self.mySimulation.Grid[cell_position].item = self.left_click_item
+
+        if self.left_click_item == "wall":
+            self.mySimulation.remove_connections(cell_position)
+        elif self.left_click_item == "pipe":
+            self.mySimulation.change_conductivity(cell_position)
 
     def middle_click_callback(self, event):
         cell_position = self.find_cell_from_position(event.x, event.y)
@@ -63,7 +79,7 @@ class Application(object):
         self.button4 = ttk.Button(self.master, text="Pipe",
                                   command=(lambda item="pipe": self.set_left_click(item)))
         self.button5 = ttk.Button(self.master, text="test",
-                                  command=(lambda item="sink": self.set_left_click(item)))
+                                  command=(lambda item="test": self.set_left_click(item)))
 
     def widget_grid_assignment(self):
         self.myCanvas.grid(row=1, column=1, columnspan=5)
@@ -91,15 +107,21 @@ class Application(object):
     def update_visual_grid(self):
         for location, tile in self.mySimulation.Grid.items():
             if tile.item == 'wall':
-                self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(0, 255, 0))
+                self.myCanvas.itemconfig(tile.canvas_id, outline=self.color_picker(0, 255, 0))
             elif tile.item == 'sink':
-                self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(255, 255, 255))
+                self.myCanvas.itemconfig(tile.canvas_id, outline=self.color_picker(255, 255, 255))
             elif tile.item == 'source':
-                self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(255, 255, 0))
+                self.myCanvas.itemconfig(tile.canvas_id, outline=self.color_picker(255, 255, 0))
             elif tile.item == 'pipe':
-                self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(0, 0, 255))
+                self.myCanvas.itemconfig(tile.canvas_id, outline=self.color_picker(0, 0, 255))
             else:
-                self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(tile.field, 0, 0))
+                pass
+            red = int(tile.field / 2)
+            if tile.field > 255:
+                green = tile.field - 255
+            else:
+                green = 0
+            self.myCanvas.itemconfig(tile.canvas_id, fill=self.color_picker(red, green, 0))
 
     def get_cell_bounds(self, location):
         x = location[0]
