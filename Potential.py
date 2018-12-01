@@ -15,7 +15,6 @@ class PotentialSim:
             self.location = location
             self.item = item
             self.field = field
-            # TODO conductivity is really resistivity
             self.neighbor_conductivity = {}
             self.canvas_id = canvas_id
             self.source_growth = 100
@@ -31,17 +30,18 @@ class PotentialSim:
             if self.item == 'wall':
                 pass
             else:
-                self.field = sum(tile.field/conductivity for tile, conductivity in self.neighbor_conductivity.items())/ \
-                             sum(1 / conductivity for tile, conductivity in self.neighbor_conductivity.items())
+                self.field = sum(tile.field * conductivity for tile, conductivity in self.neighbor_conductivity.items())\
+                            / sum(conductivity for tile, conductivity in self.neighbor_conductivity.items())
 
             if self.item == 'source':
                 self.field += self.source_growth
-                if self.field > 510:
-                    self.field = 510
             elif self.item == 'sink':
                 self.field -= self.sink_drain
-                if self.field < 0:
-                    self.field = 0
+
+            if self.field > 510:
+                self.field = 510
+            elif self.field < 0:
+                self.field = 0
 
     def set_initial_neighbors(self):
         for location, tile in self.Grid.items():
@@ -68,6 +68,37 @@ class PotentialSim:
         except KeyError:
             pass
         return neighbor_list
+
+    def reset_neighbors(self, tile):
+        possible_neighbors = self.find_initial_neighbor_tiles(tile)
+        for possible_neighbor in possible_neighbors:
+            if possible_neighbor.item == "pipe":
+                tile.neighbor_conductivity[possible_neighbor] = self.pipe_conductivity
+                possible_neighbor.neighbor_conductivity[possible_neighbor] = self.pipe_conductivity
+            elif possible_neighbor.item == "wall":
+                # If this is a wall don't set connections for it
+                continue
+            else:
+                tile.neighbor_conductivity[possible_neighbor] = self.default_conductivity
+                possible_neighbor.neighbor_conductivity[possible_neighbor] = self.default_conductivity
+
+    def add_wall(self, cell_position):
+        self.Grid[cell_position].item = "wall"
+        self.Grid[cell_position].field = 0
+        self.remove_connections(cell_position)
+
+    def add_pipe(self, cell_position):
+        self.Grid[cell_position].item = "pipe"
+        self.reset_neighbors(self.Grid[cell_position])
+        self.change_conductivity(cell_position)
+
+    def add_source(self, cell_position):
+        self.Grid[cell_position].item = "source"
+        self.reset_neighbors(self.Grid[cell_position])
+
+    def add_sink(self, cell_position):
+        self.Grid[cell_position].item = "sink"
+        self.reset_neighbors(self.Grid[cell_position])
 
     def remove_connections(self, cell_position):
         for tile in self.Grid[cell_position].neighbor_conductivity:
